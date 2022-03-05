@@ -6,6 +6,7 @@ use anchor_spl::token::{
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 pub const BATTLE: &str = "battle";
+pub const BATTLE_TOKEN: &str = "battle_token";
 
 #[program]
 pub mod battle {
@@ -42,11 +43,15 @@ pub mod battle {
 
     /// Player 2 joins the battle
     pub fn join(ctx: Context<JoinBattle>) -> Result<()> {
+        // transfer player2 token to vault
+        // set joined_at on vault_account
         Ok(())
     }
 
     /// The battle is resolved and a winner is picked
     pub fn battle(ctx: Context<Battle>) -> Result<()> {
+        // flip coin
+        // winner gets both NFTs transferred to them
         Ok(())
     }
 }
@@ -84,9 +89,16 @@ pub struct Initialize<'info> {
 
     /// The vault token account.
     #[account(
-        mut,
-        constraint = vault_token.mint == player1_mint.key() @ErrorCode::IncorrectMintAddress,
-        constraint = vault_token.owner == battle_account.key() @ErrorCode::IncorrectOwner,
+        init,
+        seeds = [
+            BATTLE_TOKEN.as_bytes(),
+            player1_token.key().to_bytes().as_ref(),
+            player1.key().to_bytes().as_ref(),
+        ],
+        bump,
+        payer = player1,
+        token::mint = player1_mint,
+        token::authority = battle_account,
     )]
     pub vault_token: Box<Account<'info, TokenAccount>>,
 
@@ -95,6 +107,9 @@ pub struct Initialize<'info> {
 
     /// Solana system program.
     pub system_program: Program<'info, System>,
+
+    /// Solana rent sysvar
+    pub rent: Sysvar<'info, Rent>,
 }
 
 /// Accounts struct for JoinBattle instruction

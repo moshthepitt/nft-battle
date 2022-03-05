@@ -1,6 +1,6 @@
-import { Connection, PublicKey, SystemProgram } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, getATAAddress,createATAInstruction } from '@saberhq/token-utils';
-import { findBattleAccount } from '../pda';
+import { Connection, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID } from '@saberhq/token-utils';
+import { findBattleAccount, findVaultTokenAccount } from '../pda';
 import { fetchTokenAccount } from '../helpers';
 import { getProgram } from '../config';
 
@@ -19,23 +19,9 @@ export const initializeIx = async (params: InitializeParams) => {
     }
     const program = getProgram(connection, programId);
     const [battleAccountKey] = await findBattleAccount(player1TokenKey, player1Key, programId);
+    const [vaultTokenAccountKey] = await findVaultTokenAccount(player1TokenKey, player1Key, programId);
 
     const instructions = []
-
-    const vaultTokenAccountKey = await getATAAddress({ mint: tokenData.mint, owner: battleAccountKey });
-    const vaultTokenAccountInfo = await program.provider.connection.getParsedAccountInfo(vaultTokenAccountKey);
-    if (vaultTokenAccountInfo.value === null) {
-        // create if it does not exist
-        instructions.push(
-            createATAInstruction({
-                address: vaultTokenAccountKey,
-                mint: tokenData.mint,
-                owner: battleAccountKey,
-                payer: player1Key,
-            }),
-        );
-    }
-
     instructions.push(
         program.instruction.initialize({
             accounts: {
@@ -46,6 +32,7 @@ export const initializeIx = async (params: InitializeParams) => {
                 vaultToken: vaultTokenAccountKey,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
+                rent: SYSVAR_RENT_PUBKEY,
             },
         })
     );
